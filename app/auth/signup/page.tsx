@@ -1,9 +1,7 @@
 "use client"
 
-import type React from "react"
-
 import { useState } from "react"
-import { useSearchParams, useRouter } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -12,28 +10,63 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { MapPin } from "lucide-react"
 import Link from "next/link"
 
+// Firebase imports
+import { auth, db } from "@/app/firebase/config"
+import { createUserWithEmailAndPassword } from "firebase/auth"
+import { doc, setDoc } from "firebase/firestore"
+
 export default function SignupPage() {
-  const searchParams = useSearchParams()
   const router = useRouter()
-  const [role, setRole] = useState(searchParams.get("role") || "traveler")
+
+  const [role, setRole] = useState("traveler") // default role
+  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+
   const [formData, setFormData] = useState({
     email: "",
     password: "",
     confirmPassword: "",
-    firstName: "",
-    lastName: "",
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // In a real app, this would make an API call
-    console.log("Signup data:", { ...formData, role })
+    setError(null)
 
-    // Redirect to appropriate dashboard
-    if (role === "guide") {
-      router.push("/guide/dashboard")
-    } else {
-      router.push("/traveler/dashboard")
+    if (formData.password !== formData.confirmPassword) {
+      setError("Passwords do not match.")
+      return
+    }
+
+    setLoading(true)
+
+    try {
+      // 1️⃣ Create Firebase user
+      const userCred = await createUserWithEmailAndPassword(
+        auth,
+        formData.email,
+        formData.password
+      )
+
+      const user = userCred.user
+
+      // 2️⃣ Store role in Firestore
+      await setDoc(doc(db, "users", user.uid), {
+        email: formData.email,
+        role: role,
+        createdAt: new Date(),
+      })
+
+      // 3️⃣ Redirect based on role
+      if (role === "guide") {
+        router.push("/guide/dashboard")
+      } else {
+        router.push("/traveler/dashboard")
+      }
+
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -46,80 +79,80 @@ export default function SignupPage() {
             <span className="text-2xl font-bold">HiddenGuide</span>
           </div>
           <CardTitle>Create Your Account</CardTitle>
-          <CardDescription>Join our community of travelers and guides</CardDescription>
+          <CardDescription>Select your role and sign up</CardDescription>
         </CardHeader>
+
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="firstName">First Name</Label>
-                <Input
-                  id="firstName"
-                  value={formData.firstName}
-                  onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="lastName">Last Name</Label>
-                <Input
-                  id="lastName"
-                  value={formData.lastName}
-                  onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                  required
-                />
-              </div>
-            </div>
 
+            {/* Email */}
             <div>
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
                 type="email"
                 value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, email: e.target.value })
+                }
                 required
               />
             </div>
 
+            {/* Password */}
             <div>
               <Label htmlFor="password">Password</Label>
               <Input
                 id="password"
                 type="password"
                 value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, password: e.target.value })
+                }
                 required
               />
             </div>
 
+            {/* Confirm Password */}
             <div>
               <Label htmlFor="confirmPassword">Confirm Password</Label>
               <Input
                 id="confirmPassword"
                 type="password"
                 value={formData.confirmPassword}
-                onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, confirmPassword: e.target.value })
+                }
                 required
               />
             </div>
 
+            {/* Role Selection */}
             <div>
               <Label>I am a:</Label>
               <RadioGroup value={role} onValueChange={setRole} className="mt-2">
+
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="traveler" id="traveler" />
-                  <Label htmlFor="traveler">Traveler - Looking for local experiences</Label>
+                  <Label htmlFor="traveler">Traveler</Label>
                 </div>
+
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="guide" id="guide" />
-                  <Label htmlFor="guide">Guide - Offering local tours and insights</Label>
+                  <Label htmlFor="guide">Guide</Label>
                 </div>
+
               </RadioGroup>
             </div>
 
-            <Button type="submit" className="w-full">
-              Create Account
+            {/* Error Message */}
+            {error && (
+              <p className="text-red-500 text-center text-sm">{error}</p>
+            )}
+
+            {/* Submit Button */}
+            <Button type="submit" disabled={loading} className="w-full">
+              {loading ? "Creating account..." : "Create Account"}
             </Button>
 
             <div className="text-center text-sm">
@@ -128,6 +161,7 @@ export default function SignupPage() {
                 Login here
               </Link>
             </div>
+
           </form>
         </CardContent>
       </Card>
