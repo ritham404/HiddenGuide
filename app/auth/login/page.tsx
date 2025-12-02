@@ -1,10 +1,11 @@
-"use client"
+﻿"use client"
 
 import type React from "react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { signInWithEmailAndPassword } from "firebase/auth"
-import { auth } from "@/app/firebase/config.ts"
+import { auth, db } from "@/app/firebase/config"
+import { doc, getDoc } from "firebase/firestore"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -33,11 +34,25 @@ export default function LoginPage() {
 
       const user = userCredential.user
 
-      // OPTIONAL: You can store roles in Firebase User Claims or Firestore
-      // For now, follow your previous logic:
-      if (formData.email.includes("guide")) {
-        router.push("/guide/dashboard")
-      } else {
+      // read role from Firestore users collection (set during signup)
+      try {
+        const userDoc = await getDoc(doc(db, "users", user.uid))
+        if (userDoc.exists()) {
+          const data = userDoc.data() as any
+          const role = data?.role ?? null
+          if (role === "guide") {
+            router.push("/guide/dashboard")
+          } else if (role === "traveler") {
+            router.push("/traveler/dashboard")
+          } else {
+            router.push("/traveler/dashboard")
+          }
+        } else {
+          // fallback to traveler if no role saved
+          router.push("/traveler/dashboard")
+        }
+      } catch (e) {
+        console.error("failed to read user role:", e)
         router.push("/traveler/dashboard")
       }
 

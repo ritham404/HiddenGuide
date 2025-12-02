@@ -1,6 +1,6 @@
-"use client"
+﻿"use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Search, MapPin, Star, Filter } from "lucide-react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import useAuth from "@/hooks/use-auth"
 
 const mockGuides = [
   {
@@ -53,6 +55,24 @@ const mockGuides = [
 export default function TravelerDashboard() {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedGuide, setSelectedGuide] = useState<number | null>(null)
+  const { user, role, loading } = useAuth()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (!loading) {
+      if (!user) {
+        router.push("/auth/login")
+        return
+      }
+
+      if (role !== "traveler") {
+        if (role === "guide") router.push("/guide/dashboard")
+        else router.push("/auth/login")
+      }
+    }
+  }, [user, role, loading, router])
+
+  if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -123,23 +143,26 @@ export default function TravelerDashboard() {
                     <div className="flex items-center">
                       <Star className="h-4 w-4 text-yellow-400 mr-1" />
                       <span className="text-sm font-medium">{guide.rating}</span>
-                      <span className="text-sm text-gray-600 ml-1">({guide.reviews} reviews)</span>
+                      <span className="text-sm text-gray-600 ml-1">({guide.reviews} revi
+ews)</span>
                     </div>
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
-                <CardDescription className="mb-4">{guide.description}</CardDescription>
+                <CardDescription className="mb-4">{guide.description}</CardDescriptio
+n>
 
                 <div className="mb-4">
                   <div className="flex flex-wrap gap-1 mb-2">
                     {guide.specialties.map((specialty) => (
-                      <Badge key={specialty} variant="secondary" className="text-xs">
+                      <Badge key={specialty} variant="secondary" className="text-xs"> 
                         {specialty}
                       </Badge>
                     ))}
                   </div>
-                  <div className="text-sm text-gray-600">Languages: {guide.languages.join(", ")}</div>
+                  <div className="text-sm text-gray-600">Languages: {guide.languages.join(
+", ")}</div>
                 </div>
 
                 <div className="flex items-center justify-between">

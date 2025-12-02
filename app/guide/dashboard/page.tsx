@@ -1,6 +1,6 @@
-"use client"
+﻿"use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -8,6 +8,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { MapPin, Star, Calendar, MessageCircle, DollarSign, Users, CheckCircle, Clock, Settings } from "lucide-react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import useAuth from "@/hooks/use-auth"
 
 const mockBookings = [
   {
@@ -55,11 +57,29 @@ const mockStats = {
 
 export default function GuideDashboard() {
   const [activeTab, setActiveTab] = useState("bookings")
+  const { user, role, loading } = useAuth()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (!loading) {
+      if (!user) {
+        router.push("/auth/login")
+        return
+      }
+
+      if (role !== "guide") {
+        if (role === "traveler") router.push("/traveler/dashboard")
+        else router.push("/auth/login")
+      }
+    }
+  }, [user, role, loading, router])
 
   const handleBookingAction = (bookingId: number, action: "accept" | "reject") => {
     console.log(`${action} booking ${bookingId}`)
     // In a real app, this would update the booking status
   }
+
+  if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -168,7 +188,7 @@ export default function GuideDashboard() {
                         <div>
                           <CardTitle className="text-lg">{booking.traveler}</CardTitle>
                           <CardDescription>
-                            {new Date(booking.date).toLocaleDateString()} at {booking.time} • {booking.duration} hours •{" "}
+                            {new Date(booking.date).toLocaleDateString()} at {booking.time}  {booking.duration} hours {" "}
                             {booking.people} people
                           </CardDescription>
                         </div>
